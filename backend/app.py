@@ -2,7 +2,7 @@ import os
 import uuid
 import secrets
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -12,7 +12,16 @@ from models import db, Room, Photo
 
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# 配置CORS - 允许所有来源和所有方法
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+}, supports_credentials=True)
+
 db.init_app(app)
 
 def allowed_file(filename):
@@ -26,33 +35,51 @@ def create_upload_dirs():
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
 
+# 统一处理OPTIONS请求
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+
 # 房间管理 API
-@app.route('/api/rooms', methods=['GET'])
+@app.route('/api/rooms', methods=['GET', 'OPTIONS'])
 def get_rooms():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     rooms = Room.query.order_by(Room.created_at.desc()).all()
     return jsonify({
         'success': True,
         'rooms': [room.to_dict() for room in rooms]
     })
 
-@app.route('/api/rooms/<int:room_id>', methods=['GET'])
+@app.route('/api/rooms/<int:room_id>', methods=['GET', 'OPTIONS'])
 def get_room(room_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     room = Room.query.get_or_404(room_id)
     return jsonify({
         'success': True,
         'room': room.to_dict()
     })
 
-@app.route('/api/rooms/code/<code>', methods=['GET'])
+@app.route('/api/rooms/code/<code>', methods=['GET', 'OPTIONS'])
 def get_room_by_code(code):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     room = Room.query.filter_by(code=code).first_or_404()
     return jsonify({
         'success': True,
         'room': room.to_dict()
     })
 
-@app.route('/api/rooms', methods=['POST'])
+@app.route('/api/rooms', methods=['POST', 'OPTIONS'])
 def create_room():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     data = request.get_json()
     if not data or not data.get('name'):
         return jsonify({
@@ -79,8 +106,10 @@ def create_room():
         'room': room.to_dict()
     }), 201
 
-@app.route('/api/rooms/<int:room_id>', methods=['PUT'])
+@app.route('/api/rooms/<int:room_id>', methods=['PUT', 'OPTIONS'])
 def update_room(room_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     room = Room.query.get_or_404(room_id)
     data = request.get_json()
     
@@ -101,8 +130,10 @@ def update_room(room_id):
         'room': room.to_dict()
     })
 
-@app.route('/api/rooms/<int:room_id>', methods=['DELETE'])
+@app.route('/api/rooms/<int:room_id>', methods=['DELETE', 'OPTIONS'])
 def delete_room(room_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     room = Room.query.get_or_404(room_id)
     
     # 删除房间的所有照片文件
@@ -120,8 +151,10 @@ def delete_room(room_id):
     })
 
 # 照片管理 API
-@app.route('/api/rooms/<int:room_id>/photos', methods=['GET'])
+@app.route('/api/rooms/<int:room_id>/photos', methods=['GET', 'OPTIONS'])
 def get_photos(room_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     room = Room.query.get_or_404(room_id)
     status = request.args.get('status', 'approved')
     
@@ -137,8 +170,10 @@ def get_photos(room_id):
         'photos': [photo.to_dict() for photo in photos]
     })
 
-@app.route('/api/rooms/<room_code>/upload', methods=['POST'])
+@app.route('/api/rooms/<room_code>/upload', methods=['POST', 'OPTIONS'])
 def upload_photo(room_code):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     room = Room.query.filter_by(code=room_code).first_or_404()
     
     if 'photo' not in request.files:
@@ -200,8 +235,10 @@ def upload_photo(room_code):
         'photo': photo.to_dict()
     }), 201
 
-@app.route('/api/photos/<int:photo_id>/approve', methods=['POST'])
+@app.route('/api/photos/<int:photo_id>/approve', methods=['POST', 'OPTIONS'])
 def approve_photo(photo_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     photo = Photo.query.get_or_404(photo_id)
     photo.status = 'approved'
     photo.approved_at = datetime.utcnow()
@@ -212,8 +249,10 @@ def approve_photo(photo_id):
         'photo': photo.to_dict()
     })
 
-@app.route('/api/photos/<int:photo_id>/reject', methods=['POST'])
+@app.route('/api/photos/<int:photo_id>/reject', methods=['POST', 'OPTIONS'])
 def reject_photo(photo_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     photo = Photo.query.get_or_404(photo_id)
     photo.status = 'rejected'
     db.session.commit()
@@ -223,8 +262,10 @@ def reject_photo(photo_id):
         'photo': photo.to_dict()
     })
 
-@app.route('/api/photos/<int:photo_id>', methods=['DELETE'])
+@app.route('/api/photos/<int:photo_id>', methods=['DELETE', 'OPTIONS'])
 def delete_photo(photo_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     photo = Photo.query.get_or_404(photo_id)
     
     # 删除文件
@@ -240,10 +281,27 @@ def delete_photo(photo_id):
         'message': '照片已删除'
     })
 
-# 照片文件服务
+# 照片文件服务 - 添加CORS头
 @app.route('/uploads/<filename>')
 def serve_photo(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    response = make_response(send_from_directory(app.config['UPLOAD_FOLDER'], filename))
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+# 添加错误处理器
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({
+        'success': False,
+        'message': 'Method Not Allowed'
+    }), 405
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({
+        'success': False,
+        'message': 'Resource Not Found'
+    }), 404
 
 # 创建数据库表
 with app.app_context():
