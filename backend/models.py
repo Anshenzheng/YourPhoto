@@ -1,25 +1,24 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from typing import List
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 
 db = SQLAlchemy()
 
 class Room(db.Model):
     __tablename__ = 'rooms'
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
-    require_approval: Mapped[bool] = mapped_column(Boolean, default=True)
-    carousel_interval: Mapped[int] = mapped_column(Integer, default=5000)  # milliseconds
-    display_mode: Mapped[str] = mapped_column(String(20), default='carousel')  # carousel or waterfall
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    code = Column(String(20), unique=True, nullable=False, index=True)
+    require_approval = Column(Boolean, default=True)
+    carousel_interval = Column(Integer, default=5000)  # milliseconds
+    display_mode = Column(String(20), default='carousel')  # carousel or waterfall
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    photos: Mapped[List['Photo']] = relationship('Photo', back_populates='room', lazy='dynamic', cascade='all, delete-orphan')
+    photos = relationship('Photo', back_populates='room', lazy='dynamic', cascade='all, delete-orphan')
     
     def to_dict(self):
         return {
@@ -37,16 +36,16 @@ class Room(db.Model):
 class Photo(db.Model):
     __tablename__ = 'photos'
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    filename: Mapped[str] = mapped_column(String(255), nullable=False)
-    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    room_id: Mapped[int] = mapped_column(Integer, ForeignKey('rooms.id'), nullable=False, index=True)
-    uploader_ip: Mapped[str] = mapped_column(String(50), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default='pending')  # pending, approved, rejected
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    approved_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    filename = Column(String(255), nullable=False)
+    original_name = Column(String(255), nullable=False)
+    room_id = Column(Integer, ForeignKey('rooms.id'), nullable=False, index=True)
+    uploader_ip = Column(String(50), nullable=True)
+    status = Column(String(20), default='pending')  # pending, approved, rejected
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    approved_at = Column(DateTime, nullable=True)
     
-    room: Mapped['Room'] = relationship('Room', back_populates='photos')
+    room = relationship('Room', back_populates='photos')
     
     def to_dict(self):
         return {
